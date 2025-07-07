@@ -5,10 +5,19 @@ export const runtime = "edge"
 export async function POST(req: NextRequest) {
   try {
     const { question } = await req.json()
+    console.log("API route called with question:", question)
 
-    const flowiseUrl =
-      "https://cloud.flowiseai.com/api/v1/prediction/50773b81-f178-4994-aa59-2ce1ff768baa"
+    const flowiseUrl = process.env.FLOWISE_URL
+    console.log("Flowise URL from env:", flowiseUrl ? "Loaded" : "Not Loaded")
 
+
+    if (!flowiseUrl) {
+      return new Response("FLOWISE_URL is not set in the environment.", {
+        status: 500,
+      })
+    }
+
+    console.log("Fetching from Flowise API...")
     const flowiseResponse = await fetch(flowiseUrl, {
       method: "POST",
       headers: {
@@ -20,28 +29,26 @@ export async function POST(req: NextRequest) {
       }),
     })
 
+    console.log("Flowise response status:", flowiseResponse.status)
+
     if (!flowiseResponse.ok) {
       const errorText = await flowiseResponse.text()
+      console.error("Error from Flowise API:", errorText)
       return new Response(`Error from Flowise API: ${errorText}`, {
         status: flowiseResponse.status,
       })
     }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        if (flowiseResponse.body) {
-          const reader = flowiseResponse.body.getReader()
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            controller.enqueue(value)
-          }
-        }
-        controller.close()
-      },
-    })
+    if (!flowiseResponse.body) {
+      console.error("Flowise response has no body")
+      return new Response("Flowise response has no body.", { status: 500 })
+    }
 
-    return new Response(stream, {
+    const { readable, writable } = new TransformStream()
+    flowiseResponse.body.pipeTo(writable)
+
+    return new Response(readable, {
+      status: 200,
       headers: { "Content-Type": "text/event-stream" },
     })
   } catch (error) {

@@ -9,7 +9,6 @@ import {
   PromptInputTextarea,
 } from "@/components/ui/prompt-input"
 import {
-  PromptSuggestion,
   PromptSuggestionButton,
 } from "@/components/ui/prompt-suggestion"
 import { ChatContent, ChatMessage } from "@/components/chat-content"

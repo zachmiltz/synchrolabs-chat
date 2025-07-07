@@ -4,7 +4,6 @@ import {
   ArrowUp,
   Copy,
   Pencil,
-  Plus,
   Square,
   ThumbsDown,
   ThumbsUp,
@@ -71,7 +70,7 @@ export function ChatContent({
         <div className="relative flex-1 overflow-y-auto">
           <ChatContainerRoot className="h-full">
             <ChatContainerContent className="space-y-0 px-5 py-12">
-              {messages.map((message, index) => {
+              {messages.map((message) => {
                 const isAssistant = message.role === "assistant"
 
                 return (

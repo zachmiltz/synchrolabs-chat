@@ -51,7 +51,7 @@ export interface PromptSuggestionButtonProps
 const PromptSuggestionButton = React.forwardRef<
   HTMLButtonElement,
   PromptSuggestionButtonProps
->(({ className, variant, size, asChild = false, ...props }, ref) => {
+>(({ className, ...props }, ref) => {
   return (
     <Button
       ref={ref}
