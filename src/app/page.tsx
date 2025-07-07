@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { ArrowUpIcon, BrainIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,8 +13,6 @@ import {
 } from "@/components/ui/prompt-suggestion"
 import { ChatContent, ChatMessage } from "@/components/chat-content"
 import { AssistantResponse } from "@/components/assistant-response"
-
-const DEBUG = true
 
 const suggestionGroups = [
   {
@@ -126,8 +124,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState("")
-
-  const flowiseUrl = "/api/chat"
 
   const handleSend = async (message: string) => {
     if (isLoading) return
