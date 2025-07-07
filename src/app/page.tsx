@@ -129,6 +129,8 @@ export default function Home() {
   const flowiseUrl = "/api/chat"
 
   const handleSend = async (message: string) => {
+    if (isLoading) return
+
     if (!showChat) {
       setShowChat(true)
     }
