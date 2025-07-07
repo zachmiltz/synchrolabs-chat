@@ -80,9 +80,6 @@ export function ChatContent({
                       isAssistant ? "items-start" : "items-end"
                     )}
                   >
-                    <code className="text-xs text-zinc-500">
-                      ID: {message.id}
-                    </code>
                     {isAssistant ? (
                       <div className="group flex w-full flex-col gap-0">
                         <div
