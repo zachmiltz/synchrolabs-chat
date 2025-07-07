@@ -181,41 +181,47 @@ export default function Home() {
       const decoder = new TextDecoder()
       let content = ""
       let receivedAnyChunk = false
+      let buffer = ""
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value, { stream: true })
+        buffer += decoder.decode(value, { stream: true })
+
         if (DEBUG) {
-          console.log("Raw chunk:", chunk)
+          // Log the raw chunk without streaming mode for clean output
+          console.log("Raw chunk:", decoder.decode(value))
         }
-        const lines = chunk.split("\n\n")
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim()
-            if (data === "[DONE]" || !data) continue
+        let boundary
+        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+          const messageChunk = buffer.slice(0, boundary)
+          buffer = buffer.slice(boundary + 2)
 
-            try {
-              if (DEBUG) {
-                console.log("Parsed data:", data)
-              }
-              const parsed = JSON.parse(data)
-              if (parsed.event === "token") {
-                receivedAnyChunk = true
-                content += parsed.data
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessageId ? { ...msg, content } : msg
+          const lines = messageChunk.split("\n")
+          for (const line of lines) {
+            if (line.startsWith("data:")) {
+              const data = line.substring(5).trim()
+              if (data === "[DONE]") continue
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.event === "token" && typeof parsed.data === "string") {
+                  receivedAnyChunk = true
+                  content += parsed.data
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? { ...msg, content }
+                        : msg
+                    )
                   )
-                )
+                }
+              } catch (e) {
+                if (DEBUG) {
+                  console.error("Failed to parse SSE data:", data, e)
+                }
               }
-            } catch (error) {
-              if (DEBUG) {
-                console.error("JSON parse error:", error)
-              }
-              // Ignore lines that are not valid JSON
             }
           }
         }
