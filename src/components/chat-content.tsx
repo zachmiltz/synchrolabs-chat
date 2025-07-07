@@ -30,6 +30,7 @@ import { ScrollButton } from "@/components/ui/scroll-button"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ResponseStream } from "@/components/ui/response-stream"
 import { cn } from "@/lib/utils"
+import { AssistantResponse } from "@/components/assistant-response"
 
 export interface ChatMessage {
   id: string
@@ -43,6 +44,8 @@ interface ChatContentProps {
   onInputChange: (value: string) => void
   onSendMessage: (message: string) => void
   isLoading: boolean
+  currentQuestion?: string
+  onStreamingComplete: (content: string) => void
 }
 
 export function ChatContent({
@@ -51,6 +54,8 @@ export function ChatContent({
   onInputChange,
   onSendMessage,
   isLoading,
+  currentQuestion,
+  onStreamingComplete,
 }: ChatContentProps) {
   return (
     <TooltipProvider>
@@ -171,6 +176,12 @@ export function ChatContent({
                   </Message>
                 )
               })}
+              {isLoading && currentQuestion && (
+                <AssistantResponse
+                  question={currentQuestion}
+                  onComplete={onStreamingComplete}
+                />
+              )}
             </ChatContainerContent>
             <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">
               <ScrollButton className="shadow-sm" />

@@ -156,21 +156,15 @@ export default function Home() {
 
   if (showChat) {
     return (
-      <>
-        <ChatContent
-          messages={messages}
-          input={input}
-          onInputChange={setInput}
-          onSendMessage={handleSend}
-          isLoading={isLoading}
-        />
-        {isLoading && currentQuestion && (
-          <AssistantResponse
-            question={currentQuestion}
-            onComplete={handleStreamingComplete}
-          />
-        )}
-      </>
+      <ChatContent
+        messages={messages}
+        input={input}
+        onInputChange={setInput}
+        onSendMessage={handleSend}
+        isLoading={isLoading}
+        currentQuestion={currentQuestion}
+        onStreamingComplete={handleStreamingComplete}
+      />
     )
   }
 
