@@ -50,7 +50,7 @@ async function* streamToAsyncIterable(stream: ReadableStream) {
           if (parsed.type === "token") {
             yield parsed.data
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore parse errors for partial data
         }
       }
