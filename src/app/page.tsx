@@ -12,7 +12,6 @@ import {
   PromptSuggestionButton,
 } from "@/components/ui/prompt-suggestion"
 import { ChatContent, ChatMessage } from "@/components/chat-content"
-import { AssistantResponse } from "@/components/assistant-response"
 
 const suggestionGroups = [
   {
