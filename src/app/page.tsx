@@ -1,175 +1,260 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowUpIcon, BrainIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import {
+  ChatContainerRoot,
+  ChatContainerContent,
+  ChatContainerScrollAnchor,
+} from "@/components/ui/chat-container"
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+} from "@/components/ui/message"
 import {
   PromptInput,
-  PromptInputActions,
   PromptInputTextarea,
+  PromptInputAction,
 } from "@/components/ui/prompt-input"
-import {
-  PromptSuggestionButton,
-} from "@/components/ui/prompt-suggestion"
-import { ChatContent, ChatMessage } from "@/components/chat-content"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
+import { ArrowUp, Copy } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { nanoid } from "nanoid"
+import { cn } from "@/lib/utils"
+import { Loader } from "@/components/ui/loader"
+import { ResponseStream } from "@/components/ui/response-stream"
+import { ScrollButton } from "@/components/ui/scroll-button"
 
-const suggestionGroups = [
-  {
-    label: "Summary",
-    items: ["Summarize a document", "Summarize a video"],
-  },
-  {
-    label: "Code",
-    items: ["Help me write React components", "Help me debug code"],
-  },
-]
+export interface ChatMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+}
 
-function PromptSuggestionsView({
-  onSend,
-}: {
-  onSend: (prompt: string) => void
-}) {
-  const [inputValue, setInputValue] = useState("")
-  const [activeCategory, setActiveCategory] = useState("")
-
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      onSend(inputValue)
-      setInputValue("")
-      setActiveCategory("")
+async function* streamToAsyncIterable(stream: ReadableStream) {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) return
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk
+        .split("\n")
+        .filter(line => line.startsWith("data: "))
+      for (const line of lines) {
+        const jsonString = line.slice(6)
+        try {
+          const parsed = JSON.parse(jsonString)
+          if (parsed.type === "token") {
+            yield parsed.data
+          }
+        } catch (e) {
+          // Ignore parse errors for partial data
+        }
+      }
     }
+  } finally {
+    reader.releaseLock()
   }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      // The form's onSubmit will handle the send
-    }
-  }
-
-  const handlePromptInputValueChange = (value: string) => {
-    setInputValue(value)
-    if (value.trim() === "") {
-      setActiveCategory("")
-    }
-  }
-
-  const activeCategoryData = suggestionGroups.find(
-    (group) => group.label === activeCategory
-  )
-
-  const showCategorySuggestions = activeCategory !== ""
-
-  return (
-    <div className="flex w-full max-w-3xl flex-col items-center justify-center gap-4">
-      <PromptInput
-        className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-xs"
-        value={inputValue}
-        onValueChange={handlePromptInputValueChange}
-        onSubmit={handleSend}
-      >
-        <PromptInputTextarea
-          placeholder="Ask anything..."
-          className="min-h-[44px] pt-3 pl-4 text-base leading-[1.3] sm:text-base md:text-base"
-          onKeyDown={handleKeyDown}
-        />
-        <PromptInputActions className="mt-5 flex w-full items-end justify-end gap-2 px-3 pb-3">
-          <Button
-            size="sm"
-            className="h-9 w-9 rounded-full"
-            type="submit"
-            disabled={!inputValue.trim()}
-          >
-            <ArrowUpIcon className="h-4 w-4" />
-          </Button>
-        </PromptInputActions>
-      </PromptInput>
-
-      <div className="relative flex w-full flex-col items-center justify-center space-y-2">
-        <div className="relative flex w-full flex-wrap items-stretch justify-start gap-2">
-          {showCategorySuggestions
-            ? activeCategoryData?.items.map((suggestion) => (
-                <PromptSuggestionButton
-                  key={suggestion}
-                  onClick={() => {
-                    setInputValue(suggestion)
-                  }}
-                >
-                  {suggestion}
-                </PromptSuggestionButton>
-              ))
-            : suggestionGroups.map((suggestion) => (
-                <PromptSuggestionButton
-                  key={suggestion.label}
-                  onClick={() => {
-                    setActiveCategory(suggestion.label)
-                    setInputValue("")
-                  }}
-                  className="capitalize"
-                >
-                  <BrainIcon className="mr-2 h-4 w-4" />
-                  {suggestion.label}
-                </PromptSuggestionButton>
-              ))}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [showChat, setShowChat] = useState(false)
-  const [currentQuestion, setCurrentQuestion] = useState("")
+  const [stream, setStream] = useState<AsyncIterable<string> | null>(null)
+  const isStreaming = useRef(false)
 
-  const handleSend = async (message: string) => {
-    if (isLoading) return
+  // handle input change
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    console.log(event)
+    setInput(event.target.value)
+  }
 
-    if (!showChat) {
-      setShowChat(true)
-    }
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!input.trim() || isStreaming.current) return
 
+    isStreaming.current = true
     setIsLoading(true)
-    setCurrentQuestion(message)
 
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: nanoid(),
       role: "user",
-      content: message,
+      content: input,
     }
-    setMessages((prev) => [...prev, userMessage])
+    const currentInput = input
+    setMessages(prev => [...prev, userMessage])
+    setInput("")
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: currentInput,
+          history: messages,
+        }),
+      })
+
+      if (!response.body) {
+        throw new Error("No response body")
+      }
+
+      const assistantMessageId = nanoid()
+      setMessages(prev => [
+        ...prev,
+        { id: assistantMessageId, role: "assistant", content: "" },
+      ])
+
+      const iterableStream = streamToAsyncIterable(response.body)
+      setStream(iterableStream)
+    } catch (error) {
+      console.error("Error fetching chat response:", error)
+      setIsLoading(false)
+      isStreaming.current = false
+    }
   }
 
-  const handleStreamingComplete = (content: string) => {
-    const assistantMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content,
-    }
-    setMessages((prev) => [...prev, assistantMessage])
-    setIsLoading(false)
-    setCurrentQuestion("")
-  }
+  useEffect(() => {
+    const processStream = async () => {
+      if (!stream) return
 
-  if (showChat) {
-    return (
-      <ChatContent
-        messages={messages}
-        input={input}
-        onInputChange={setInput}
-        onSendMessage={handleSend}
-        isLoading={isLoading}
-        currentQuestion={currentQuestion}
-        onStreamingComplete={handleStreamingComplete}
-      />
-    )
-  }
+      let assistantResponse = ""
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage?.role !== "assistant") {
+        setIsLoading(false)
+        isStreaming.current = false
+        setStream(null)
+        return
+      }
+      const assistantMessageId = lastMessage.id
+
+      try {
+        for await (const chunk of stream) {
+          assistantResponse += chunk
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: assistantResponse }
+                : msg
+            )
+          )
+        }
+      } catch (error) {
+        console.error("Error processing stream:", error)
+      } finally {
+        setStream(null)
+        setIsLoading(false)
+        isStreaming.current = false
+      }
+    }
+
+    processStream()
+  }, [stream, messages])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <PromptSuggestionsView onSend={handleSend} />
-    </main>
+    <TooltipProvider>
+      <ChatContainerRoot>
+        <ChatContainerContent>
+          {messages.map((message, index) => {
+            const isLastMessage = index === messages.length - 1
+            const isAssistant = message.role === "assistant"
+
+            return (
+              <Message
+                key={message.id}
+                className={cn(
+                  "mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 py-6"
+                )}
+              >
+                {isAssistant ? (
+                  <div className="group flex w-full flex-col gap-0">
+                    {isLastMessage && isLoading && stream ? (
+                      <div
+                        className={cn(
+                          "text-foreground prose w-full flex-1 rounded-lg bg-transparent p-0"
+                        )}
+                      >
+                        <ResponseStream textStream={stream} mode="fade" />
+                      </div>
+                    ) : message.content ? (
+                      <MessageContent
+                        markdown
+                        className={cn(
+                          "text-foreground prose w-full flex-1 rounded-lg bg-transparent p-0"
+                        )}
+                      >
+                        {message.content}
+                      </MessageContent>
+                    ) : (
+                      <Loader variant="circular" />
+                    )}
+                    <MessageActions
+                      className={cn(
+                        "-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                      )}
+                    >
+                      <MessageAction tooltip="Copy message">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            navigator.clipboard.writeText(message.content)
+                          }
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </MessageAction>
+                    </MessageActions>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-semibold text-foreground">You</div>
+                    <div className="text-foreground">{message.content}</div>
+                  </>
+                )}
+              </Message>
+            )
+          })}
+          <ChatContainerScrollAnchor />
+        </ChatContainerContent>
+        <div className="mx-auto w-full max-w-3xl px-6 pb-4">
+          <div className="flex items-center justify-end">
+            <ScrollButton />
+          </div>
+          <form onSubmit={handleSubmit}>
+            <PromptInput>
+              <PromptInputTextarea
+                placeholder="Ask a question"
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSubmit(
+                      e as unknown as React.FormEvent<HTMLFormElement>
+                    )
+                  }
+                }}
+              />
+              <PromptInputAction tooltip="Send message">
+                <Button
+                  type="submit"
+                  aria-label="Send message"
+                  disabled={isLoading || !input.trim()}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              </PromptInputAction>
+            </PromptInput>
+          </form>
+        </div>
+      </ChatContainerRoot>
+    </TooltipProvider>
   )
 }
