@@ -45,7 +45,7 @@ function PromptSuggestionsView({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      // The form's onSubmit will handle the send
     }
   }
 
@@ -79,7 +79,7 @@ function PromptSuggestionsView({
           <Button
             size="sm"
             className="h-9 w-9 rounded-full"
-            onClick={handleSend}
+            type="submit"
             disabled={!inputValue.trim()}
           >
             <ArrowUpIcon className="h-4 w-4" />

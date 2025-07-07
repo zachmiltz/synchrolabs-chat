@@ -52,12 +52,6 @@ export function ChatContent({
   onSendMessage,
   isLoading,
 }: ChatContentProps) {
-  const handleSend = () => {
-    if (input.trim()) {
-      onSendMessage(input)
-    }
-  }
-
   return (
     <TooltipProvider>
       <main className="flex h-screen flex-col overflow-hidden">
@@ -189,7 +183,7 @@ export function ChatContent({
             <PromptInput
               value={input}
               onValueChange={onInputChange}
-              onSubmit={handleSend}
+              onSubmit={() => onSendMessage(input)}
               className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-xs"
             >
               <div className="flex flex-col">
@@ -201,8 +195,8 @@ export function ChatContent({
                 <PromptInputActions className="mt-5 flex w-full items-center justify-end gap-2 px-3 pb-3">
                   <Button
                     size="icon"
+                    type="submit"
                     disabled={!input.trim() || isLoading}
-                    onClick={handleSend}
                     className="size-9 rounded-full"
                   >
                     {isLoading ? (
