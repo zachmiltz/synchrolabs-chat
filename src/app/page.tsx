@@ -12,6 +12,7 @@ import {
   PromptSuggestionButton,
 } from "@/components/ui/prompt-suggestion"
 import { ChatContent, ChatMessage } from "@/components/chat-content"
+import { AssistantResponse } from "@/components/assistant-response"
 
 const DEBUG = true
 
@@ -124,7 +125,7 @@ export default function Home() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showChat, setShowChat] = useState(false)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const [currentQuestion, setCurrentQuestion] = useState("")
 
   const flowiseUrl = "/api/chat"
 
@@ -135,142 +136,45 @@ export default function Home() {
       setShowChat(true)
     }
 
+    setIsLoading(true)
+    setCurrentQuestion(message)
+
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
       content: message,
     }
+    setMessages((prev) => [...prev, userMessage])
+  }
 
-    const assistantMessageId = crypto.randomUUID()
-    const newMessages = [
-      ...messages,
-      userMessage,
-      {
-        id: assistantMessageId,
-        role: "assistant" as const,
-        content: "",
-      },
-    ]
-
-    setMessages(newMessages)
-    setIsLoading(true)
-    abortControllerRef.current = new AbortController()
-
-    try {
-      const response = await fetch(flowiseUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: message }),
-        signal: abortControllerRef.current.signal,
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `API Error: ${response.status} ${response.statusText}. Details: ${errorText}`
-        )
-      }
-
-      if (!response.body) {
-        throw new Error(
-          "Failed to fetch response from the server: No response body."
-        )
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let content = ""
-      let receivedAnyChunk = false
-      let buffer = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-
-        if (DEBUG) {
-          // Log the raw chunk without streaming mode for clean output
-          console.log("Raw chunk:", decoder.decode(value))
-        }
-
-        let boundary
-        while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-          const messageChunk = buffer.slice(0, boundary)
-          buffer = buffer.slice(boundary + 2)
-
-          const lines = messageChunk.split("\n")
-          for (const line of lines) {
-            if (line.startsWith("data:")) {
-              const data = line.substring(5).trim()
-              if (data === "[DONE]") continue
-              try {
-                const parsed = JSON.parse(data)
-                if (parsed.event === "token" && typeof parsed.data === "string") {
-                  receivedAnyChunk = true
-                  content += parsed.data
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content }
-                        : msg
-                    )
-                  )
-                }
-              } catch (e) {
-                if (DEBUG) {
-                  console.error("Failed to parse SSE data:", data, e)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if (!receivedAnyChunk) {
-        const errorMessage =
-          "Connection successful, but no data received from the stream."
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? {
-                  ...msg,
-                  content: DEBUG ? errorMessage : "Cannot connect.",
-                }
-              : msg
-          )
-        )
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== "AbortError") {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? {
-                  ...msg,
-                  content: DEBUG
-                    ? `Error: ${error.message}`
-                    : "Sorry, an error occurred.",
-                }
-              : msg
-          )
-        )
-      }
-    } finally {
-      setIsLoading(false)
-      abortControllerRef.current = null
+  const handleStreamingComplete = (content: string) => {
+    const assistantMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content,
     }
+    setMessages((prev) => [...prev, assistantMessage])
+    setIsLoading(false)
+    setCurrentQuestion("")
   }
 
   if (showChat) {
     return (
-      <ChatContent
-        messages={messages}
-        input={input}
-        onInputChange={setInput}
-        onSendMessage={handleSend}
-        isLoading={isLoading}
-      />
+      <>
+        <ChatContent
+          messages={messages}
+          input={input}
+          onInputChange={setInput}
+          onSendMessage={handleSend}
+          isLoading={isLoading}
+        />
+        {isLoading && currentQuestion && (
+          <AssistantResponse
+            question={currentQuestion}
+            onComplete={handleStreamingComplete}
+          />
+        )}
+      </>
     )
   }
 
