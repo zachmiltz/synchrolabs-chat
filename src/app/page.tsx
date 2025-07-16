@@ -1,27 +1,31 @@
 "use client"
 
-import { useState } from "react"
-import { nanoid } from "nanoid"
 import {
   ChatContainerRoot,
   ChatContainerContent,
-  ChatContainerScrollAnchor,
 } from "@/components/prompt-kit/chat-container"
 import {
   Message,
-  MessageContent,
-  MessageActions,
   MessageAction,
+  MessageActions,
+  MessageContent,
 } from "@/components/prompt-kit/message"
 import {
   PromptInput,
-  PromptInputTextarea,
-  PromptInputActions,
   PromptInputAction,
+  PromptInputActions,
+  PromptInputTextarea,
 } from "@/components/prompt-kit/prompt-input"
 import { ResponseStream } from "@/components/prompt-kit/response-stream"
 import { ScrollButton } from "@/components/prompt-kit/scroll-button"
-import { Copy, ArrowUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import {
+  ArrowUp,
+  Copy,
+} from "lucide-react"
+import { useRef, useState } from "react"
+import { nanoid } from "nanoid"
 
 interface ChatMessage {
   id: string
@@ -31,30 +35,36 @@ interface ChatMessage {
   stream?: AsyncIterable<string>
 }
 
-export default function FlowiseChatApp() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState("")
+// Initial chat messages
+const initialMessages: ChatMessage[] = []
+
+function ChatContent() {
+  const [prompt, setPrompt] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [chatMessages, setChatMessages] = useState(initialMessages)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = async () => {
-    if (!input.trim() || isLoading) return
+    if (!prompt.trim()) return
 
-    const userMessage: ChatMessage = {
-      id: nanoid(),
-      role: "user",
-      content: input,
-    }
-
-    setMessages(prev => [...prev, userMessage])
-    const currentInput = input
-    setInput("")
+    setPrompt("")
     setIsLoading(true)
 
+    // Add user message immediately
+    const newUserMessage: ChatMessage = {
+      id: nanoid(),
+      role: "user",
+      content: prompt.trim(),
+    }
+
+    setChatMessages([...chatMessages, newUserMessage])
+
+    // Simulate API response
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: currentInput }),
+        body: JSON.stringify({ question: prompt.trim() }),
       })
 
       if (!response.ok) throw new Error("Failed to get response")
@@ -68,21 +78,21 @@ export default function FlowiseChatApp() {
         stream: createStreamFromResponse(response),
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setChatMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error:", error)
-      // Add error message
-      setMessages(prev => [...prev, {
-        id: nanoid(),
-        role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
-      }])
-    } finally {
+        console.error("Error:", error)
+        // Add error message
+        setChatMessages((prev) => [...prev, {
+            id: nanoid(),
+            role: "assistant",
+            content: "Sorry, I encountered an error. Please try again.",
+        }])
+    }
+    finally {
       setIsLoading(false)
     }
   }
 
-  // Simple stream creator for FlowiseAI response
   async function* createStreamFromResponse(response: Response) {
     if (!response.body) return
 
@@ -115,7 +125,7 @@ export default function FlowiseChatApp() {
   }
 
   const handleStreamComplete = (messageId: string, finalContent: string) => {
-    setMessages(prev => 
+    setChatMessages(prev => 
       prev.map(msg => 
         msg.id === messageId 
           ? { ...msg, content: finalContent, isStreaming: false, stream: undefined }
@@ -124,65 +134,125 @@ export default function FlowiseChatApp() {
     )
   }
 
-  const copyToClipboard = (content: string) => {
-    navigator.clipboard.writeText(content)
-  }
-
   return (
-    <div className="flex h-screen flex-col">
-      <ChatContainerRoot className="flex-1">
-        <ChatContainerContent className="p-4">
-          {messages.map((message) => (
-            <Message key={message.id} className="mb-4">
-              <MessageContent className={
-                message.role === "user" 
-                  ? "bg-blue-50 ml-12" 
-                  : "bg-gray-50 mr-12"
-              }>
-                {message.isStreaming && message.stream ? (
-                  <ResponseStream
-                    textStream={message.stream}
-                    onComplete={(finalText) => handleStreamComplete(message.id, finalText)}
-                  />
-                ) : (
-                  message.content
-                )}
-              </MessageContent>
-              
-              {message.role === "assistant" && !message.isStreaming && (
-                <MessageActions>
-                  <MessageAction
-                    onClick={() => copyToClipboard(message.content)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </MessageAction>
-                </MessageActions>
-              )}
-            </Message>
-          ))}
-          <ChatContainerScrollAnchor />
-        </ChatContainerContent>
-        <ScrollButton />
-      </ChatContainerRoot>
+    <main className="flex h-screen flex-col overflow-hidden">
+      <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
+        <div className="text-foreground">Project roadmap discussion</div>
+      </header>
 
-      <div className="border-t p-4">
-        <PromptInput
-          value={input}
-          onValueChange={setInput}
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-        >
-          <PromptInputTextarea
-            placeholder="Ask me anything..."
-            className="min-h-[60px]"
-          />
-          <PromptInputActions>
-            <PromptInputAction type="submit">
-              <ArrowUp className="h-4 w-4" />
-            </PromptInputAction>
-          </PromptInputActions>
-        </PromptInput>
+      <div ref={chatContainerRef} className="relative flex-1 overflow-y-auto">
+        <ChatContainerRoot className="h-full">
+          <ChatContainerContent className="space-y-0 px-5 py-12">
+            {chatMessages.map((message, index) => {
+              const isAssistant = message.role === "assistant"
+              const isLastMessage = index === chatMessages.length - 1
+
+              return (
+                <div
+                  key={message.id}
+                  className="mx-auto w-full max-w-3xl px-6 py-2"
+                >
+                  <Message className={cn("w-full", isAssistant ? "justify-start" : "justify-end")}>
+                    {isAssistant ? (
+                      <>
+                        <div className="group flex w-full flex-col gap-1">
+                          <MessageContent className="text-foreground prose bg-transparent">
+                            {message.isStreaming && message.stream ? (
+                              <ResponseStream
+                                textStream={message.stream}
+                                onComplete={() => handleStreamComplete(message.id, message.content)}
+                              />
+                            ) : (
+                              message.content
+                            )}
+                          </MessageContent>
+                          <MessageActions
+                            className={cn(
+                              "flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100",
+                              isLastMessage && "opacity-100"
+                            )}
+                          >
+                            <MessageAction tooltip="Copy">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-full"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </MessageAction>
+                          </MessageActions>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="group flex flex-col items-end gap-1 max-w-[80%]">
+                        <MessageContent className="bg-primary text-primary-foreground rounded-2xl px-4 py-2">
+                          {message.content}
+                        </MessageContent>
+                        <MessageActions
+                          className="flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                        >
+                          <MessageAction tooltip="Copy">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </MessageAction>
+                        </MessageActions>
+                      </div>
+                    )}
+                  </Message>
+                </div>
+              )
+            })}
+          </ChatContainerContent>
+          <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">
+            <ScrollButton className="shadow-sm" />
+          </div>
+        </ChatContainerRoot>
       </div>
-    </div>
+
+      <div className="bg-background z-10 shrink-0 px-3 pb-3 md:px-5 md:pb-5">
+        <div className="mx-auto max-w-3xl">
+          <PromptInput
+            value={prompt}
+            onValueChange={setPrompt}
+            isLoading={isLoading}
+            onSubmit={handleSubmit}
+            className="w-full"
+          >
+            <PromptInputTextarea placeholder="Ask me anything..." />
+            <PromptInputActions className="justify-end pt-2">
+              <PromptInputAction
+                tooltip={isLoading ? "Stop generation" : "Send message"}
+              >
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  disabled={!prompt.trim() || isLoading}
+                  onClick={handleSubmit}
+                >
+                  {isLoading ? (
+                    <span className="size-3 rounded-xs bg-white" />
+                  ) : (
+                    <ArrowUp className="size-5" />
+                  )}
+                </Button>
+              </PromptInputAction>
+            </PromptInputActions>
+          </PromptInput>
+        </div>
+      </div>
+    </main>
   )
-} 
+}
+
+function FullChatApp() {
+  return <ChatContent />
+}
+
+export default FullChatApp

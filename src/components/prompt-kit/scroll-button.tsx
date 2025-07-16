@@ -1,55 +1,42 @@
 "use client"
 
-import * as React from "react"
-import { ArrowDown } from "lucide-react"
-
+import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { type VariantProps } from "class-variance-authority"
+import { ChevronDown } from "lucide-react"
+import { useStickToBottomContext } from "use-stick-to-bottom"
 
-const ScrollButton = React.forwardRef<
-    HTMLButtonElement,
-    React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => {
-    const [isAtBottom, setIsAtBottom] = React.useState(true)
+export type ScrollButtonProps = {
+  className?: string
+  variant?: VariantProps<typeof buttonVariants>["variant"]
+  size?: VariantProps<typeof buttonVariants>["size"]
+} & React.ButtonHTMLAttributes<HTMLButtonElement>
 
-    React.useEffect(() => {
-        const handleScroll = () => {
-            const scrollable = document.documentElement
-            const isAtBottom = scrollable.scrollHeight - scrollable.scrollTop <= scrollable.clientHeight + 1
-            setIsAtBottom(isAtBottom)
-        }
+function ScrollButton({
+  className,
+  variant = "outline",
+  size = "sm",
+  ...props
+}: ScrollButtonProps) {
+  const { isAtBottom, scrollToBottom } = useStickToBottomContext()
 
-        window.addEventListener("scroll", handleScroll, { passive: true })
-        handleScroll() 
-
-        return () => {
-            window.removeEventListener("scroll", handleScroll)
-        }
-    }, [])
-    
-    const scrollToBottom = () => {
-        window.scrollTo({
-            top: document.documentElement.scrollHeight,
-            behavior: "smooth"
-        })
-    }
-
-    return (
-        <Button
-            ref={ref}
-            onClick={scrollToBottom}
-            className={cn(
-                "absolute bottom-20 right-4 z-10 h-10 w-10 rounded-full p-2 transition-opacity",
-                isAtBottom ? "opacity-0" : "opacity-100",
-                className
-            )}
-            {...props}
-        >
-            <ArrowDown />
-        </Button>
-    )
-})
-ScrollButton.displayName = "ScrollButton"
-
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      className={cn(
+        "h-10 w-10 rounded-full transition-all duration-150 ease-out",
+        !isAtBottom
+          ? "translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-4 scale-95 opacity-0",
+        className
+      )}
+      onClick={() => scrollToBottom()}
+      {...props}
+    >
+      <ChevronDown className="h-5 w-5" />
+    </Button>
+  )
+}
 
 export { ScrollButton } 

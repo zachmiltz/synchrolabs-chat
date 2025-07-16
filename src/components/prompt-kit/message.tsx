@@ -1,56 +1,113 @@
-"use client"
-
-import * as React from "react"
-
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const Message = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+export type MessageProps = {
+  children: React.ReactNode
+  className?: string
+} & React.HTMLProps<HTMLDivElement>
+
+const Message = ({ children, className, ...props }: MessageProps) => (
+  <div className={cn("flex gap-3", className)} {...props}>
+    {children}
+  </div>
+)
+
+export type MessageAvatarProps = {
+  src: string
+  alt: string
+  fallback?: string
+  delayMs?: number
+  className?: string
+}
+
+const MessageAvatar = ({
+  src,
+  alt,
+  fallback,
+  delayMs,
+  className,
+}: MessageAvatarProps) => {
+  return (
+    <Avatar className={cn("h-8 w-8 shrink-0", className)}>
+      <AvatarImage src={src} alt={alt} />
+      {fallback && (
+        <AvatarFallback delayMs={delayMs}>{fallback}</AvatarFallback>
+      )}
+    </Avatar>
+  )
+}
+
+export type MessageContentProps = {
+  children: React.ReactNode
+  className?: string
+} & React.HTMLProps<HTMLDivElement>
+
+const MessageContent = ({
+  children,
+  className,
+  ...props
+}: MessageContentProps) => {
+  return (
+    <div 
+      className={cn(
+        "rounded-lg p-2 text-foreground bg-secondary prose break-words whitespace-normal",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+export type MessageActionsProps = {
+  children: React.ReactNode
+  className?: string
+} & React.HTMLProps<HTMLDivElement>
+
+const MessageActions = ({
+  children,
+  className,
+  ...props
+}: MessageActionsProps) => (
   <div
-    ref={ref}
-    className={cn("flex items-start", className)}
+    className={cn("text-muted-foreground flex items-center gap-2", className)}
     {...props}
-  />
-))
-Message.displayName = "Message"
+  >
+    {children}
+  </div>
+)
 
-const MessageContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("p-4 rounded-lg", className)}
-    {...props}
-  />
-))
-MessageContent.displayName = "MessageContent"
+export type MessageActionProps = {
+  className?: string
+  tooltip: React.ReactNode
+  children: React.ReactNode
+  side?: "top" | "bottom" | "left" | "right"
+} & React.ComponentProps<typeof Tooltip>
 
-const MessageActions = React.forwardRef<
-    HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-    <div
-        ref={ref}
-        className={cn("flex items-center ml-4", className)}
-        {...props}
-    />
-))
-MessageActions.displayName = "MessageActions"
+const MessageAction = ({
+  tooltip,
+  children,
+  className,
+  side = "top",
+  ...props
+}: MessageActionProps) => {
+  return (
+    <TooltipProvider>
+      <Tooltip {...props}>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side} className={className}>
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
-const MessageAction = React.forwardRef<
-    HTMLButtonElement,
-    React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ className, ...props }, ref) => (
-    <button
-        ref={ref}
-        className={cn("p-2 text-gray-500 hover:text-gray-700", className)}
-        {...props}
-    />
-))
-MessageAction.displayName = "MessageAction"
-
-
-export { Message, MessageContent, MessageActions, MessageAction } 
+export { Message, MessageAvatar, MessageContent, MessageActions, MessageAction } 
