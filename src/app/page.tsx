@@ -1,260 +1,188 @@
 "use client"
 
+import { useState } from "react"
+import { nanoid } from "nanoid"
 import {
   ChatContainerRoot,
   ChatContainerContent,
   ChatContainerScrollAnchor,
-} from "@/components/ui/chat-container"
+} from "@/components/prompt-kit/chat-container"
 import {
   Message,
-  MessageAction,
-  MessageActions,
   MessageContent,
-} from "@/components/ui/message"
+  MessageActions,
+  MessageAction,
+} from "@/components/prompt-kit/message"
 import {
   PromptInput,
   PromptInputTextarea,
+  PromptInputActions,
   PromptInputAction,
-} from "@/components/ui/prompt-input"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Button } from "@/components/ui/button"
-import { ArrowUp, Copy } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
-import { nanoid } from "nanoid"
-import { cn } from "@/lib/utils"
-import { Loader } from "@/components/ui/loader"
-import { ResponseStream } from "@/components/ui/response-stream"
-import { ScrollButton } from "@/components/ui/scroll-button"
+} from "@/components/prompt-kit/prompt-input"
+import { ResponseStream } from "@/components/prompt-kit/response-stream"
+import { ScrollButton } from "@/components/prompt-kit/scroll-button"
+import { Copy, ArrowUp } from "lucide-react"
 
-export interface ChatMessage {
+interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  isStreaming?: boolean
+  stream?: AsyncIterable<string>
 }
 
-async function* streamToAsyncIterable(stream: ReadableStream) {
-  const reader = stream.getReader()
-  const decoder = new TextDecoder()
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) return
-      const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk
-        .split("\n")
-        .filter(line => line.startsWith("data: "))
-      for (const line of lines) {
-        const jsonString = line.slice(6)
-        try {
-          const parsed = JSON.parse(jsonString)
-          if (parsed.type === "token") {
-            yield parsed.data
-          }
-        } catch (_e) {
-          // Ignore parse errors for partial data
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock()
-  }
-}
-
-export default function Home() {
+export default function FlowiseChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [stream, setStream] = useState<AsyncIterable<string> | null>(null)
-  const isStreaming = useRef(false)
 
-  // handle input change
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    console.log(event)
-    setInput(event.target.value)
-  }
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!input.trim() || isStreaming.current) return
-
-    isStreaming.current = true
-    setIsLoading(true)
+  const handleSubmit = async () => {
+    if (!input.trim() || isLoading) return
 
     const userMessage: ChatMessage = {
       id: nanoid(),
       role: "user",
       content: input,
     }
-    const currentInput = input
+
     setMessages(prev => [...prev, userMessage])
+    const currentInput = input
     setInput("")
+    setIsLoading(true)
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: currentInput,
-          history: messages,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: currentInput }),
       })
 
-      if (!response.body) {
-        throw new Error("No response body")
+      if (!response.ok) throw new Error("Failed to get response")
+
+      // Create assistant message with streaming
+      const assistantMessage: ChatMessage = {
+        id: nanoid(),
+        role: "assistant",
+        content: "",
+        isStreaming: true,
+        stream: createStreamFromResponse(response),
       }
 
-      const assistantMessageId = nanoid()
-      setMessages(prev => [
-        ...prev,
-        { id: assistantMessageId, role: "assistant", content: "" },
-      ])
-
-      const iterableStream = streamToAsyncIterable(response.body)
-      setStream(iterableStream)
+      setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error fetching chat response:", error)
+      console.error("Error:", error)
+      // Add error message
+      setMessages(prev => [...prev, {
+        id: nanoid(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+      }])
+    } finally {
       setIsLoading(false)
-      isStreaming.current = false
     }
   }
 
-  useEffect(() => {
-    const processStream = async () => {
-      if (!stream) return
+  // Simple stream creator for FlowiseAI response
+  async function* createStreamFromResponse(response: Response) {
+    if (!response.body) return
 
-      let assistantResponse = ""
-      const lastMessage = messages[messages.length - 1]
-      if (lastMessage?.role !== "assistant") {
-        setIsLoading(false)
-        isStreaming.current = false
-        setStream(null)
-        return
-      }
-      const assistantMessageId = lastMessage.id
-
-      try {
-        for await (const chunk of stream) {
-          assistantResponse += chunk
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: assistantResponse }
-                : msg
-            )
-          )
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split("\n").filter(line => line.startsWith("data: "))
+        
+        for (const line of lines) {
+          try {
+            const jsonString = line.slice(6)
+            const parsed = JSON.parse(jsonString)
+            if (parsed.type === "token") {
+              yield parsed.data
+            }
+          } catch {
+            // Ignore parse errors for partial data
+          }
         }
-      } catch (error) {
-        console.error("Error processing stream:", error)
-      } finally {
-        setStream(null)
-        setIsLoading(false)
-        isStreaming.current = false
       }
+    } finally {
+      reader.releaseLock()
     }
+  }
 
-    processStream()
-  }, [stream, messages])
+  const handleStreamComplete = (messageId: string, finalContent: string) => {
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, content: finalContent, isStreaming: false, stream: undefined }
+          : msg
+      )
+    )
+  }
+
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content)
+  }
 
   return (
-    <TooltipProvider>
-      <ChatContainerRoot>
-        <ChatContainerContent>
-          {messages.map((message, index) => {
-            const isLastMessage = index === messages.length - 1
-            const isAssistant = message.role === "assistant"
-
-            return (
-              <Message
-                key={message.id}
-                className={cn(
-                  "mx-auto flex w-full max-w-3xl flex-col gap-2 px-6 py-6"
-                )}
-              >
-                {isAssistant ? (
-                  <div className="group flex w-full flex-col gap-0">
-                    {isLastMessage && isLoading && stream ? (
-                      <div
-                        className={cn(
-                          "text-foreground prose w-full flex-1 rounded-lg bg-transparent p-0"
-                        )}
-                      >
-                        <ResponseStream textStream={stream} mode="fade" />
-                      </div>
-                    ) : message.content ? (
-                      <MessageContent
-                        markdown
-                        className={cn(
-                          "text-foreground prose w-full flex-1 rounded-lg bg-transparent p-0"
-                        )}
-                      >
-                        {message.content}
-                      </MessageContent>
-                    ) : (
-                      <Loader variant="circular" />
-                    )}
-                    <MessageActions
-                      className={cn(
-                        "-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                      )}
-                    >
-                      <MessageAction tooltip="Copy message">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            navigator.clipboard.writeText(message.content)
-                          }
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </MessageAction>
-                    </MessageActions>
-                  </div>
+    <div className="flex h-screen flex-col">
+      <ChatContainerRoot className="flex-1">
+        <ChatContainerContent className="p-4">
+          {messages.map((message) => (
+            <Message key={message.id} className="mb-4">
+              <MessageContent className={
+                message.role === "user" 
+                  ? "bg-blue-50 ml-12" 
+                  : "bg-gray-50 mr-12"
+              }>
+                {message.isStreaming && message.stream ? (
+                  <ResponseStream
+                    textStream={message.stream}
+                    onComplete={(finalText) => handleStreamComplete(message.id, finalText)}
+                  />
                 ) : (
-                  <>
-                    <div className="font-semibold text-foreground">You</div>
-                    <div className="text-foreground">{message.content}</div>
-                  </>
+                  message.content
                 )}
-              </Message>
-            )
-          })}
+              </MessageContent>
+              
+              {message.role === "assistant" && !message.isStreaming && (
+                <MessageActions>
+                  <MessageAction
+                    onClick={() => copyToClipboard(message.content)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </MessageAction>
+                </MessageActions>
+              )}
+            </Message>
+          ))}
           <ChatContainerScrollAnchor />
         </ChatContainerContent>
-        <div className="mx-auto w-full max-w-3xl px-6 pb-4">
-          <div className="flex items-center justify-end">
-            <ScrollButton />
-          </div>
-          <form onSubmit={handleSubmit}>
-            <PromptInput>
-              <PromptInputTextarea
-                placeholder="Ask a question"
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSubmit(
-                      e as unknown as React.FormEvent<HTMLFormElement>
-                    )
-                  }
-                }}
-              />
-              <PromptInputAction tooltip="Send message">
-                <Button
-                  type="submit"
-                  aria-label="Send message"
-                  disabled={isLoading || !input.trim()}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              </PromptInputAction>
-            </PromptInput>
-          </form>
-        </div>
+        <ScrollButton />
       </ChatContainerRoot>
-    </TooltipProvider>
+
+      <div className="border-t p-4">
+        <PromptInput
+          value={input}
+          onValueChange={setInput}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+        >
+          <PromptInputTextarea
+            placeholder="Ask me anything..."
+            className="min-h-[60px]"
+          />
+          <PromptInputActions>
+            <PromptInputAction type="submit">
+              <ArrowUp className="h-4 w-4" />
+            </PromptInputAction>
+          </PromptInputActions>
+        </PromptInput>
+      </div>
+    </div>
   )
-}
+} 
