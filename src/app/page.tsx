@@ -16,13 +16,21 @@ import {
 } from "@/components/prompt-kit/prompt-input"
 import { ResponseStream } from "@/components/prompt-kit/response-stream"
 import { ScrollButton } from "@/components/prompt-kit/scroll-button"
+import { PromptSuggestion } from "@/components/prompt-kit/prompt-suggestion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   ArrowUp,
+  File,
+  Sparkles,
+  Book,
+  BrainCircuit,
+  Code,
+  Lightbulb,
 } from "lucide-react"
 import { useRef, useState, useEffect } from "react"
 import { nanoid } from "nanoid"
+import { motion } from "framer-motion"
 
 // Global fallback tracker that persists across component re-renders and hot reloads
 const globalFallbackTracker = new Set<string>()
@@ -58,6 +66,7 @@ function ChatContent() {
   const [prompt, setPrompt] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [chatMessages, setChatMessages] = useState(initialMessages)
+  const [isChatActive, setIsChatActive] = useState(false)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const fallbackTriggered = useRef<Set<string>>(new Set())
   const agentTimeoutSet = useRef<Set<string>>(new Set())
@@ -80,10 +89,15 @@ function ChatContent() {
     }
   }, [])
 
-  const handleSubmit = async () => {
-    if (!prompt.trim()) return
+  const handleSubmit = async (value?: string) => {
+    const message = (typeof value === "string" ? value : prompt).trim()
+    if (!message) return
 
-    console.log("handleSubmit called with prompt:", prompt.trim())
+    if (!isChatActive) {
+      setIsChatActive(true)
+    }
+
+    console.log("handleSubmit called with prompt:", message)
     
     setPrompt("")
     setIsLoading(true)
@@ -92,18 +106,18 @@ function ChatContent() {
     const newUserMessage: ChatMessage = {
       id: nanoid(),
       role: "user",
-      content: prompt.trim(),
+      content: message,
     }
 
-    setChatMessages([...chatMessages, newUserMessage])
+    setChatMessages((prev) => [...prev, newUserMessage])
 
     // Simulate API response
     try {
-      console.log("Making API call to /api/chat with question:", prompt.trim())
+      console.log("Making API call to /api/chat with question:", message)
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: prompt.trim() }),
+        body: JSON.stringify({ question: message }),
       })
 
       console.log("API response received, status:", response.status)
@@ -159,7 +173,7 @@ function ChatContent() {
             fetch("/api/chat-fallback", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ question: prompt.trim() }),
+              body: JSON.stringify({ question: message }),
             })
             .then(async (fallbackResponse) => {
               if (fallbackResponse.ok) {
@@ -518,96 +532,190 @@ function ChatContent() {
     )
   }
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setPrompt(suggestion)
+    handleSubmit(suggestion)
+  }
+
   return (
     <main className="flex h-screen flex-col overflow-hidden">
       <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
         <div className="text-foreground">SynchroLabs Chat</div>
       </header>
 
-      <div ref={chatContainerRef} className="relative flex-1 overflow-y-auto">
-        <ChatContainerRoot className="h-full">
-          <ChatContainerContent className="space-y-0 px-5 py-12">
-            {chatMessages.map((message) => {
+      <motion.div
+        className="flex flex-1 flex-col min-h-0"
+        initial={{ justifyContent: "center" }}
+        animate={{
+          justifyContent: isChatActive ? "space-between" : "center",
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      >
+        <motion.div
+          ref={chatContainerRef}
+          className="relative min-h-0 w-full overflow-y-auto"
+          animate={{
+            height: isChatActive ? "100%" : "auto",
+            flexGrow: isChatActive ? 1 : 0,
+          }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        >
+          {isChatActive ? (
+            <ChatContainerRoot className="h-full">
+              <ChatContainerContent className="space-y-0 px-5 py-12">
+                {chatMessages.map((message) => {
             const isAssistant = message.role === "assistant"
 
             return (
-                <div
+                    <div
                 key={message.id}
-                  className="mx-auto w-full max-w-3xl px-6 py-2"
+                      className="mx-auto w-full max-w-3xl px-6 py-2"
               >
-                  <Message className={cn("w-full", isAssistant ? "justify-start" : "justify-end")}>
-                {isAssistant ? (
-                      <>
-                        <div className="group flex w-full flex-col gap-1">
-                          <MessageContent className="text-foreground prose bg-transparent">
-                            {message.isStreaming && message.stream ? (
-                              <ResponseStream
-                                textStream={message.stream}
-                                onComplete={() => handleStreamComplete(message.id)}
-                              />
-                            ) : (
-                              message.content
-                            )}
+                      <Message
+                        className={cn(
+                          "w-full",
+                          isAssistant ? "justify-start" : "justify-end"
+                        )}
+                      >
+                        {isAssistant ? (
+                          <>
+                            <div className="group flex w-full flex-col gap-1">
+                              <MessageContent className="text-foreground prose bg-transparent">
+                                {message.isStreaming && message.stream ? (
+                                  <ResponseStream
+                                    textStream={message.stream}
+                                    onComplete={() =>
+                                      handleStreamComplete(message.id)
+                                    }
+                                  />
+                                ) : (
+                                  message.content
+                                )}
+                              </MessageContent>
+                              {/* MessageActions removed since no children */}
+        </div>
+                          </>
+                        ) : (
+                          <div className="group flex w-full flex-col items-end gap-1">
+                            <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 sm:max-w-[75%]">
+                        {message.content}
                       </MessageContent>
-                    {/* MessageActions removed since no children */}
-                    </div>
-                      </>
-                    ) : (
-                      <div className="group flex w-full flex-col items-end gap-1">
-                        <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 sm:max-w-[75%]">
-                          {message.content}
-                        </MessageContent>
-                        {/* MessageActions removed since no children */}
+                            {/* MessageActions removed since no children */}
                   </div>
                 )}
               </Message>
-                </div>
+                    </div>
             )
           })}
         </ChatContainerContent>
-          <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">
-            <ScrollButton className="shadow-sm" />
-          </div>
-        </ChatContainerRoot>
-      </div>
-
-      <div className="bg-background z-10 shrink-0 px-3 pb-3 md:px-5 md:pb-5">
-        <div className="mx-auto max-w-3xl">
-          <PromptInput
-            value={prompt}
-            onValueChange={setPrompt}
-            isLoading={isLoading}
-            onSubmit={handleSubmit}
-            className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-sm"
-          >
-            <div className="flex flex-col">
-              <PromptInputTextarea
-                placeholder="Ask me anything..."
-                className="min-h-[44px] pt-3 pl-4 text-base"
-              />
-              <PromptInputActions className="flex w-full items-center justify-end gap-2 px-3 pb-3 pt-2">
-                <PromptInputAction
-                  tooltip={isLoading ? "Stop generation" : "Send message"}
-                >
-                  <Button
-                    variant="default"
-                    size="icon"
-                    className="size-9 rounded-full"
-                    disabled={!prompt.trim() || isLoading}
-                    type="submit"
-                  >
-                    {isLoading ? (
-                      <span className="size-3 rounded-xs bg-white" />
-                    ) : (
-                      <ArrowUp size={18} />
-                    )}
-                  </Button>
-                </PromptInputAction>
-              </PromptInputActions>
+              <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">
+                <ScrollButton className="shadow-sm" />
+              </div>
+            </ChatContainerRoot>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-8">
+              <h1 className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-4xl font-medium tracking-tight text-transparent mb-8">
+                What&apos;s on your mind?
+              </h1>
             </div>
-          </PromptInput>
-        </div>
-      </div>
+          )}
+        </motion.div>
+
+        <motion.div
+          className="bg-background z-10 shrink-0 px-3 pb-3 md:px-5 md:pb-5"
+          layout
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        >
+          <div className="mx-auto max-w-3xl">
+            <PromptInput
+              value={prompt}
+              onValueChange={setPrompt}
+              isLoading={isLoading}
+              onSubmit={() => handleSubmit()}
+              className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-sm"
+            >
+              <div className="flex flex-col">
+              <PromptInputTextarea
+                  placeholder="Ask me anything..."
+                  className="font-sans min-h-[44px] pt-3 pl-4 text-base leading-[1.3] placeholder:text-base"
+                />
+                <PromptInputActions className="flex w-full items-center justify-end gap-2 px-3 pb-3 pt-2">
+                  <PromptInputAction
+                    tooltip={isLoading ? "Stop generation" : "Send message"}
+                  >
+                <Button
+                      variant="default"
+                      size="icon"
+                      className="size-9 rounded-full"
+                      disabled={!prompt.trim() || isLoading}
+                  type="submit"
+                    >
+                      {isLoading ? (
+                        <span className="size-3 rounded-xs bg-white" />
+                      ) : (
+                        <ArrowUp size={18} />
+                      )}
+                </Button>
+              </PromptInputAction>
+                </PromptInputActions>
+              </div>
+            </PromptInput>
+            <motion.div
+              className="mt-4 flex flex-wrap justify-center gap-2"
+              initial={{ opacity: 1, y: 0 }}
+              animate={{
+                opacity: isChatActive ? 0 : 1,
+                y: isChatActive ? 20 : 0,
+                display: isChatActive ? "none" : "flex",
+              }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Summarize this document")}
+              >
+                <File className="mr-2" size={16} />
+                Summary
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Generate code for a component")}
+              >
+                <Code className="mr-2" size={16} />
+                Code
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Design a new logo")}
+              >
+                <Sparkles className="mr-2" size={16} />
+                Design
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Research the latest AI trends")}
+              >
+                <Book className="mr-2" size={16} />
+                Research
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Get inspired with new ideas")}
+              >
+                <Sparkles className="mr-2" size={16} />
+                Get Inspired
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Think deeply about a topic")}
+              >
+                <BrainCircuit className="mr-2" size={16} />
+                Think Deeply
+              </PromptSuggestion>
+              <PromptSuggestion
+                onClick={() => handleSuggestionClick("Learn gently about a new concept")}
+              >
+                <Lightbulb className="mr-2" size={16} />
+                Learn Gently
+              </PromptSuggestion>
+            </motion.div>
+    </div>
+        </motion.div>
+      </motion.div>
     </main>
   )
 }
