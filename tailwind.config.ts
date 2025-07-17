@@ -8,7 +8,12 @@ const config: Config = {
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)"],
+        mono: ["var(--font-geist-mono)"],
+      },
+    },
   },
   plugins: [
     require("tailwindcss-animate"),
