@@ -283,6 +283,10 @@ code {
   }
 }
 
+::placeholder {
+  font-family: var(--font-inter);
+}
+
 @utility step {
   counter-increment: step;
 
@@ -291,4 +295,9 @@ code {
     @apply mt-[-4px] ml-[-50px];
     content: counter(step);
   }
+}
+
+.prompt-suggestion-highlight {
+  font-weight: 600; /* semibold */
+  color: hsl(var(--primary));
 }

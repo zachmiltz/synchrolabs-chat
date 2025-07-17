@@ -21,16 +21,15 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   ArrowUp,
-  File,
   Sparkles,
-  Book,
   BrainCircuit,
-  Code,
-  Lightbulb,
+  ArrowLeft,
+  Users,
+  User,
 } from "lucide-react"
 import { useRef, useState, useEffect } from "react"
 import { nanoid } from "nanoid"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 // Global fallback tracker that persists across component re-renders and hot reloads
 const globalFallbackTracker = new Set<string>()
@@ -58,6 +57,55 @@ interface ChatMessage {
   stream?: AsyncIterable<string>
 }
 
+const suggestionGroups = [
+  {
+    label: "Our Vision",
+    icon: Sparkles,
+    highlight: "vision",
+    items: [
+      "Explain your core approach to AI in simple terms.",
+      "How is your vision different from other AI consultants?",
+      "Describe your philosophy on the 'human-AI partnership.'",
+      "What is your long-term vision for the future of work?",
+    ],
+  },
+  {
+    label: "For Organizations",
+    icon: BrainCircuit,
+    highlight: "organization",
+    items: [
+      "How do you help an organization develop an AI strategy that aligns with its values?",
+      "What are the first steps to see if my organization is a good fit for you?",
+      "What tangible business outcomes can we expect from working with you?",
+      "How do you help organizations evolve towards self-management?",
+      "How do you identify processes within our organization that are ripe for automation?",
+    ],
+  },
+  {
+    label: "For Teams",
+    icon: Users,
+    highlight: "team",
+    items: [
+      "How does AI enhance a team's capabilities without replacing people?",
+      "What does a 'human-AI partnership' look like in a team's daily workflow?",
+      "How do you help teams adapt to new AI-powered roles and responsibilities?",
+      "How can our team use AI to become more innovative?",
+      "How do you train our team to use AI safely and confidently?",
+    ],
+  },
+  {
+    label: "For Individuals",
+    icon: User,
+    highlight: "purpose",
+    items: [
+      "How do you help employees find more meaning and purpose in their work?",
+      "What practical skills do I need to thrive in an AI-assisted workplace?",
+      "What is 'inner development,' and how do you support it?",
+      "How can I use AI to focus on the work I'm best at and enjoy most?",
+    ],
+  },
+]
+
 // Initial chat messages
 const initialMessages: ChatMessage[] = []
 
@@ -67,6 +115,7 @@ function ChatContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [chatMessages, setChatMessages] = useState(initialMessages)
   const [isChatActive, setIsChatActive] = useState(false)
+  const [activeCategory, setActiveCategory] = useState("")
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const fallbackTriggered = useRef<Set<string>>(new Set())
   const agentTimeoutSet = useRef<Set<string>>(new Set())
@@ -317,7 +366,7 @@ function ChatContent() {
                             return
                           }
                           
-                          if (globalFallbackTracker.has(messageId)) {
+                          if (globalTimeoutTracker.has(messageId)) {
                             console.log("Fallback already triggered locally, skipping...")
                             return
                           }
@@ -326,7 +375,7 @@ function ChatContent() {
                           if (globalFallback) {
                             globalFallback.add(messageId)
                           }
-                          globalFallbackTracker.add(messageId)
+                          globalTimeoutTracker.add(messageId)
                           
                           // Use a synchronous check to prevent race conditions
                           if (fallbackInProgress.current.has(messageId)) {
@@ -537,19 +586,31 @@ function ChatContent() {
     handleSubmit(suggestion)
   }
 
+  const handleCategoryClick = (categoryLabel: string) => {
+    setActiveCategory(categoryLabel)
+    setPrompt("") // Clear input when a category is selected
+  }
+  
+  const handlePromptChange = (value: string) => {
+    setPrompt(value)
+    if (activeCategory) {
+      setActiveCategory("") // Reset category if user types
+    }
+  }
+
+  const activeCategoryData = suggestionGroups.find(
+    (group) => group.label === activeCategory
+  )
+
   return (
     <main className="flex h-screen flex-col overflow-hidden">
       <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-        <div className="text-foreground">SynchroLabs Chat</div>
+        <div className="text-foreground">Synchro Labs</div>
       </header>
 
       <motion.div
-        className="flex flex-1 flex-col min-h-0"
+        className={cn("flex flex-1 flex-col min-h-0", isChatActive ? "justify-between" : "justify-center")}
         initial={{ justifyContent: "center" }}
-        animate={{
-          justifyContent: isChatActive ? "space-between" : "center",
-        }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
       >
         <motion.div
           ref={chatContainerRef}
@@ -615,7 +676,7 @@ function ChatContent() {
           ) : (
             <div className="flex flex-col items-center justify-center gap-8">
               <h1 className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-4xl font-medium tracking-tight text-transparent mb-8">
-                What&apos;s on your mind?
+                What would liberate you to focus on meaningful work?
               </h1>
             </div>
           )}
@@ -623,13 +684,13 @@ function ChatContent() {
 
         <motion.div
           className="bg-background z-10 shrink-0 px-3 pb-3 md:px-5 md:pb-5"
-          layout
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          layout="position"
+          transition={{ duration: 0.8, ease: "easeInOut" }}
         >
           <div className="mx-auto max-w-3xl">
             <PromptInput
               value={prompt}
-              onValueChange={setPrompt}
+              onValueChange={handlePromptChange}
               isLoading={isLoading}
               onSubmit={() => handleSubmit()}
               className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-sm"
@@ -660,60 +721,55 @@ function ChatContent() {
                 </PromptInputActions>
               </div>
             </PromptInput>
-            <motion.div
-              className="mt-4 flex flex-wrap justify-center gap-2"
-              initial={{ opacity: 1, y: 0 }}
-              animate={{
-                opacity: isChatActive ? 0 : 1,
-                y: isChatActive ? 20 : 0,
-                display: isChatActive ? "none" : "flex",
-              }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-            >
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Summarize this document")}
-              >
-                <File className="mr-2" size={16} />
-                Summary
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Generate code for a component")}
-              >
-                <Code className="mr-2" size={16} />
-                Code
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Design a new logo")}
-              >
-                <Sparkles className="mr-2" size={16} />
-                Design
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Research the latest AI trends")}
-              >
-                <Book className="mr-2" size={16} />
-                Research
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Get inspired with new ideas")}
-              >
-                <Sparkles className="mr-2" size={16} />
-                Get Inspired
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Think deeply about a topic")}
-              >
-                <BrainCircuit className="mr-2" size={16} />
-                Think Deeply
-              </PromptSuggestion>
-              <PromptSuggestion
-                onClick={() => handleSuggestionClick("Learn gently about a new concept")}
-              >
-                <Lightbulb className="mr-2" size={16} />
-                Learn Gently
-              </PromptSuggestion>
-            </motion.div>
-    </div>
+            {!isChatActive && (
+              <div className="relative h-28">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                  key={activeCategory ? "suggestions" : "categories"}
+                  className="mt-4 flex flex-wrap justify-center gap-2"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
+                  {!activeCategory ? (
+                    suggestionGroups.map((suggestion) => (
+                      <PromptSuggestion
+                        key={suggestion.label}
+                        onClick={() => handleCategoryClick(suggestion.label)}
+                      >
+                        <suggestion.icon className="mr-2" size={16} />
+                        {suggestion.label}
+                      </PromptSuggestion>
+                    ))
+                  ) : (
+                    <div className="flex w-full flex-col items-center space-y-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveCategory("")}
+                        className="self-start text-muted-foreground"
+                      >
+                        <ArrowLeft className="mr-2" size={16} />
+                        Back
+                      </Button>
+                      {activeCategoryData?.items.map((item) => (
+                        <PromptSuggestion
+                          key={item}
+                          highlight={activeCategoryData.highlight}
+                          onClick={() => handleSuggestionClick(item)}
+                          className="w-full"
+                        >
+                          {item}
+                        </PromptSuggestion>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            )}
+          </div>
         </motion.div>
       </motion.div>
     </main>
