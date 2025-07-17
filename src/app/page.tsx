@@ -31,6 +31,40 @@ import { useRef, useState, useEffect } from "react"
 import { nanoid } from "nanoid"
 import { motion, AnimatePresence } from "framer-motion"
 
+// Import translations
+import en from "@/messages/en.json"
+import es from "@/messages/es.json"
+import pt from "@/messages/pt.json"
+
+// Translation helper
+const translations = { en, es, pt }
+type Locale = keyof typeof translations
+
+function useTranslation() {
+  const [locale, setLocale] = useState<Locale>('en')
+  
+  useEffect(() => {
+    // Detect browser language
+    const browserLang = navigator.language.split('-')[0] as Locale
+    if (translations[browserLang]) {
+      setLocale(browserLang)
+    }
+  }, [])
+  
+  const t = (key: string): string => {
+    const keys = key.split('.')
+    let value: unknown = translations[locale]
+    for (const k of keys) {
+      if (value && typeof value === 'object') {
+        value = (value as Record<string, unknown>)[k]
+      }
+    }
+    return (typeof value === 'string' ? value : key)
+  }
+  
+  return { t, locale, setLocale }
+}
+
 // Global fallback tracker that persists across component re-renders and hot reloads
 const globalFallbackTracker = new Set<string>()
 
@@ -57,60 +91,62 @@ interface ChatMessage {
   stream?: AsyncIterable<string>
 }
 
-const suggestionGroups = [
-  {
-    label: "Our Vision",
-    icon: Sparkles,
-    highlight: "vision",
-    items: [
-      "Explain your core approach to AI in simple terms.",
-      "How is your vision different from other AI consultants?",
-      "Describe your philosophy on the 'human-AI partnership.'",
-      "What is your long-term vision for the future of work?",
-    ],
-  },
-  {
-    label: "For Organizations",
-    icon: BrainCircuit,
-    highlight: "organization",
-    items: [
-      "How do you help an organization develop an AI strategy that aligns with its values?",
-      "What are the first steps to see if my organization is a good fit for you?",
-      "What tangible business outcomes can we expect from working with you?",
-      "How do you help organizations evolve towards self-management?",
-      "How do you identify processes within our organization that are ripe for automation?",
-    ],
-  },
-  {
-    label: "For Teams",
-    icon: Users,
-    highlight: "team",
-    items: [
-      "How does AI enhance a team's capabilities without replacing people?",
-      "What does a 'human-AI partnership' look like in a team's daily workflow?",
-      "How do you help teams adapt to new AI-powered roles and responsibilities?",
-      "How can our team use AI to become more innovative?",
-      "How do you train our team to use AI safely and confidently?",
-    ],
-  },
-  {
-    label: "For Individuals",
-    icon: User,
-    highlight: "purpose",
-    items: [
-      "How do you help employees find more meaning and purpose in their work?",
-      "What practical skills do I need to thrive in an AI-assisted workplace?",
-      "What is 'inner development,' and how do you support it?",
-      "How can I use AI to focus on the work I'm best at and enjoy most?",
-    ],
-  },
-]
-
 // Initial chat messages
 const initialMessages: ChatMessage[] = []
 
 function ChatContent() {
   console.log("ChatContent component rendered/mounted")
+  const { t, locale, setLocale } = useTranslation()
+  
+  const suggestionGroups = [
+    {
+      label: t('categories.ourVision'),
+      icon: Sparkles,
+      highlight: t('highlights.vision'),
+      items: [
+        t('suggestions.vision.item1'),
+        t('suggestions.vision.item2'),
+        t('suggestions.vision.item3'),
+        t('suggestions.vision.item4'),
+      ],
+    },
+    {
+      label: t('categories.forOrganizations'),
+      icon: BrainCircuit,
+      highlight: t('highlights.organization'),
+      items: [
+        t('suggestions.organizations.item1'),
+        t('suggestions.organizations.item2'),
+        t('suggestions.organizations.item3'),
+        t('suggestions.organizations.item4'),
+        t('suggestions.organizations.item5'),
+      ],
+    },
+    {
+      label: t('categories.forTeams'),
+      icon: Users,
+      highlight: t('highlights.team'),
+      items: [
+        t('suggestions.teams.item1'),
+        t('suggestions.teams.item2'),
+        t('suggestions.teams.item3'),
+        t('suggestions.teams.item4'),
+        t('suggestions.teams.item5'),
+      ],
+    },
+    {
+      label: t('categories.forIndividuals'),
+      icon: User,
+      highlight: t('highlights.purpose'),
+      items: [
+        t('suggestions.individuals.item1'),
+        t('suggestions.individuals.item2'),
+        t('suggestions.individuals.item3'),
+        t('suggestions.individuals.item4'),
+      ],
+    },
+  ]
+  
   const [prompt, setPrompt] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [chatMessages, setChatMessages] = useState(initialMessages)
@@ -272,7 +308,7 @@ function ChatContent() {
         setChatMessages((prev) => [...prev, {
             id: nanoid(),
             role: "assistant",
-            content: "Sorry, I encountered an error. Please try again.",
+            content: t('common.error'),
         }])
     }
     finally {
@@ -604,8 +640,34 @@ function ChatContent() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-        <div className="text-foreground">Synchro Labs</div>
+      <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center justify-between gap-2 border-b px-4">
+        <div className="text-foreground">{t('common.brandName')}</div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocale('en')}
+            className={locale === 'en' ? 'bg-accent' : ''}
+          >
+            EN
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocale('es')}
+            className={locale === 'es' ? 'bg-accent' : ''}
+          >
+            ES
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocale('pt')}
+            className={locale === 'pt' ? 'bg-accent' : ''}
+          >
+            PT
+          </Button>
+        </div>
       </header>
 
       <motion.div
@@ -676,9 +738,9 @@ function ChatContent() {
           ) : (
             <div className="flex flex-col items-center justify-center gap-8">
               <h1 className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-4xl font-medium tracking-tight text-transparent mb-8">
-                What would liberate you to focus on meaningful work?
+                {t('landing.mainHeading')}
               </h1>
-            </div>
+          </div>
           )}
         </motion.div>
 
@@ -697,12 +759,12 @@ function ChatContent() {
             >
               <div className="flex flex-col">
               <PromptInputTextarea
-                  placeholder="Ask me anything..."
+                  placeholder={t('common.askAnything')}
                   className="font-sans min-h-[44px] pt-3 pl-4 text-base leading-[1.3] placeholder:text-base"
                 />
                 <PromptInputActions className="flex w-full items-center justify-end gap-2 px-3 pb-3 pt-2">
                   <PromptInputAction
-                    tooltip={isLoading ? "Stop generation" : "Send message"}
+                    tooltip={isLoading ? t('common.stopGeneration') : t('common.sendMessage')}
                   >
                 <Button
                       variant="default"
@@ -751,7 +813,7 @@ function ChatContent() {
                         className="self-start text-muted-foreground"
                       >
                         <ArrowLeft className="mr-2" size={16} />
-                        Back
+                        {t('common.back')}
                       </Button>
                       {activeCategoryData?.items.map((item) => (
                         <PromptSuggestion
@@ -769,7 +831,7 @@ function ChatContent() {
               </AnimatePresence>
             </div>
             )}
-          </div>
+    </div>
         </motion.div>
       </motion.div>
     </main>

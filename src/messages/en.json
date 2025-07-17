@@ -1,0 +1,53 @@
+{
+  "common": {
+    "brandName": "Synchro Labs",
+    "askAnything": "Ask me anything...",
+    "back": "Back",
+    "sendMessage": "Send message",
+    "stopGeneration": "Stop generation",
+    "error": "Sorry, I encountered an error. Please try again."
+  },
+  "landing": {
+    "mainHeading": "What would liberate you to focus on meaningful work?"
+  },
+  "categories": {
+    "ourVision": "Our Vision",
+    "forOrganizations": "For Organizations",
+    "forTeams": "For Teams",
+    "forIndividuals": "For Individuals"
+  },
+  "suggestions": {
+    "vision": {
+      "item1": "Explain your core approach to AI in simple terms.",
+      "item2": "How is your vision different from other AI consultants?",
+      "item3": "Describe your philosophy on the 'human-AI partnership.'",
+      "item4": "What is your long-term vision for the future of work?"
+    },
+    "organizations": {
+      "item1": "How do you help an organization develop an AI strategy that aligns with its values?",
+      "item2": "What are the first steps to see if my organization is a good fit for you?",
+      "item3": "What tangible business outcomes can we expect from working with you?",
+      "item4": "How do you help organizations evolve towards self-management?",
+      "item5": "How do you identify processes within our organization that are ripe for automation?"
+    },
+    "teams": {
+      "item1": "How does AI enhance a team's capabilities without replacing people?",
+      "item2": "What does a 'human-AI partnership' look like in a team's daily workflow?",
+      "item3": "How do you help teams adapt to new AI-powered roles and responsibilities?",
+      "item4": "How can our team use AI to become more innovative?",
+      "item5": "How do you train our team to use AI safely and confidently?"
+    },
+    "individuals": {
+      "item1": "How do you help employees find more meaning and purpose in their work?",
+      "item2": "What practical skills do I need to thrive in an AI-assisted workplace?",
+      "item3": "What is 'inner development,' and how do you support it?",
+      "item4": "How can I use AI to focus on the work I'm best at and enjoy most?"
+    }
+  },
+  "highlights": {
+    "vision": "vision",
+    "organization": "organization", 
+    "team": "team",
+    "purpose": "purpose"
+  }
+} 

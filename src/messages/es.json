@@ -1,0 +1,53 @@
+{
+  "common": {
+    "brandName": "Synchro Labs",
+    "askAnything": "Pregúntame cualquier cosa...",
+    "back": "Atrás",
+    "sendMessage": "Enviar mensaje",
+    "stopGeneration": "Detener generación",
+    "error": "Lo siento, encontré un error. Por favor inténtalo de nuevo."
+  },
+  "landing": {
+    "mainHeading": "¿Qué te liberaría para enfocarte en un trabajo significativo?"
+  },
+  "categories": {
+    "ourVision": "Nuestra Visión",
+    "forOrganizations": "Para Organizaciones",
+    "forTeams": "Para Equipos",
+    "forIndividuals": "Para Individuos"
+  },
+  "suggestions": {
+    "vision": {
+      "item1": "Explica tu enfoque central hacia la IA en términos simples.",
+      "item2": "¿En qué se diferencia tu visión de otros consultores de IA?",
+      "item3": "Describe tu filosofía sobre la 'asociación humano-IA'.",
+      "item4": "¿Cuál es tu visión a largo plazo para el futuro del trabajo?"
+    },
+    "organizations": {
+      "item1": "¿Cómo ayudas a una organización a desarrollar una estrategia de IA que se alinee con sus valores?",
+      "item2": "¿Cuáles son los primeros pasos para ver si mi organización es una buena opción para ti?",
+      "item3": "¿Qué resultados comerciales tangibles podemos esperar al trabajar contigo?",
+      "item4": "¿Cómo ayudas a las organizaciones a evolucionar hacia la autogestión?",
+      "item5": "¿Cómo identificas los procesos dentro de nuestra organización que están listos para la automatización?"
+    },
+    "teams": {
+      "item1": "¿Cómo mejora la IA las capacidades de un equipo sin reemplazar a las personas?",
+      "item2": "¿Cómo se ve una 'asociación humano-IA' en el flujo de trabajo diario de un equipo?",
+      "item3": "¿Cómo ayudas a los equipos a adaptarse a nuevos roles y responsabilidades impulsados por IA?",
+      "item4": "¿Cómo puede nuestro equipo usar la IA para volverse más innovador?",
+      "item5": "¿Cómo entrenas a nuestro equipo para usar la IA de manera segura y confiada?"
+    },
+    "individuals": {
+      "item1": "¿Cómo ayudas a los empleados a encontrar más significado y propósito en su trabajo?",
+      "item2": "¿Qué habilidades prácticas necesito para prosperar en un lugar de trabajo asistido por IA?",
+      "item3": "¿Qué es el 'desarrollo interior' y cómo lo apoyas?",
+      "item4": "¿Cómo puedo usar la IA para enfocarme en el trabajo en el que soy mejor y disfruto más?"
+    }
+  },
+  "highlights": {
+    "vision": "visión",
+    "organization": "organización",
+    "team": "equipo",
+    "purpose": "propósito"
+  }
+} 
