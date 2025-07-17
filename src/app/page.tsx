@@ -6,8 +6,6 @@ import {
 } from "@/components/prompt-kit/chat-container"
 import {
   Message,
-  MessageAction,
-  MessageActions,
   MessageContent,
 } from "@/components/prompt-kit/message"
 import {
@@ -22,7 +20,6 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   ArrowUp,
-  Copy,
 } from "lucide-react"
 import { useRef, useState, useEffect } from "react"
 import { nanoid } from "nanoid"
@@ -530,9 +527,8 @@ function ChatContent() {
       <div ref={chatContainerRef} className="relative flex-1 overflow-y-auto">
         <ChatContainerRoot className="h-full">
           <ChatContainerContent className="space-y-0 px-5 py-12">
-            {chatMessages.map((message, index) => {
+            {chatMessages.map((message) => {
             const isAssistant = message.role === "assistant"
-              const isLastMessage = index === chatMessages.length - 1
 
             return (
                 <div
@@ -553,42 +549,15 @@ function ChatContent() {
                               message.content
                             )}
                       </MessageContent>
-                    <MessageActions
-                      className={cn(
-                              "flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100",
-                              isLastMessage && "opacity-100"
-                      )}
-                    >
-                            <MessageAction tooltip="Copy">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                                className="h-6 w-6 rounded-full"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </MessageAction>
-                          </MessageActions>
-                        </div>
+                    {/* MessageActions removed since no children */}
+                    </div>
                       </>
                     ) : (
                       <div className="group flex w-full flex-col items-end gap-1">
                         <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 sm:max-w-[75%]">
                           {message.content}
                         </MessageContent>
-                        <MessageActions
-                          className="flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                        >
-                          <MessageAction tooltip="Copy">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 rounded-full"
-                            >
-                              <Copy className="h-3 w-3" />
-                        </Button>
-                      </MessageAction>
-                    </MessageActions>
+                        {/* MessageActions removed since no children */}
                   </div>
                 )}
               </Message>
