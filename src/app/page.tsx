@@ -572,8 +572,8 @@ function ChatContent() {
                         </div>
                       </>
                     ) : (
-                      <div className="group flex flex-col items-end gap-1 max-w-[80%]">
-                        <MessageContent className="bg-primary text-primary-foreground rounded-2xl px-4 py-2">
+                      <div className="group flex w-full flex-col items-end gap-1">
+                        <MessageContent className="bg-muted text-primary max-w-[85%] rounded-3xl px-5 py-2.5 sm:max-w-[75%]">
                           {message.content}
                         </MessageContent>
                         <MessageActions
@@ -609,31 +609,36 @@ function ChatContent() {
             onValueChange={setPrompt}
             isLoading={isLoading}
             onSubmit={handleSubmit}
-            className="w-full"
+            className="border-input bg-popover relative z-10 w-full rounded-3xl border p-0 pt-1 shadow-sm"
           >
-            <PromptInputTextarea placeholder="Ask me anything..." />
-            <PromptInputActions className="justify-end pt-2">
-              <PromptInputAction
-                tooltip={isLoading ? "Stop generation" : "Send message"}
-              >
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                  disabled={!prompt.trim() || isLoading}
-                  type="submit"
+            <div className="flex flex-col">
+              <PromptInputTextarea
+                placeholder="Ask me anything..."
+                className="min-h-[44px] pt-3 pl-4 text-base"
+              />
+              <PromptInputActions className="flex w-full items-center justify-end gap-2 px-3 pb-3 pt-2">
+                <PromptInputAction
+                  tooltip={isLoading ? "Stop generation" : "Send message"}
                 >
-                  {isLoading ? (
-                    <span className="size-3 rounded-xs bg-white" />
-                  ) : (
-                    <ArrowUp className="size-5" />
-                  )}
-                </Button>
-              </PromptInputAction>
-            </PromptInputActions>
-            </PromptInput>
+                  <Button
+                    variant="default"
+                    size="icon"
+                    className="size-9 rounded-full"
+                    disabled={!prompt.trim() || isLoading}
+                    type="submit"
+                  >
+                    {isLoading ? (
+                      <span className="size-3 rounded-xs bg-white" />
+                    ) : (
+                      <ArrowUp size={18} />
+                    )}
+                  </Button>
+                </PromptInputAction>
+              </PromptInputActions>
+            </div>
+          </PromptInput>
         </div>
-    </div>
+      </div>
     </main>
   )
 }
