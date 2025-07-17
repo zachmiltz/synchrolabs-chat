@@ -402,18 +402,7 @@ function ChatContent() {
                    // Don't treat status messages as text responses
                  } else if (parsed.event === "end" && parsed.data) {
                    console.log("End event with data:", parsed.data)
-                   if (typeof parsed.data === 'string' && parsed.data.trim() && 
-                       !["INPROGRESS", "FINISHED", "STARTED", "ERROR"].includes(parsed.data.trim())) {
-                     accumulatedContent += parsed.data
-                     setChatMessages(prev => 
-                       prev.map(msg => 
-                         msg.id === messageId 
-                           ? { ...msg, content: accumulatedContent }
-                           : msg
-                       )
-                     )
-                     yield parsed.data
-                   }
+                   // Do not process the [DONE] message as part of the content
                  } else if (parsed.event === "agentResponse" && parsed.data && typeof parsed.data === 'string') {
                    console.log("Agent response:", parsed.data)
                    accumulatedContent += parsed.data
@@ -535,7 +524,7 @@ function ChatContent() {
   return (
     <main className="flex h-screen flex-col overflow-hidden">
       <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
-        <div className="text-foreground">Project roadmap discussion</div>
+        <div className="text-foreground">SynchroLabs Chat</div>
       </header>
 
       <div ref={chatContainerRef} className="relative flex-1 overflow-y-auto">
